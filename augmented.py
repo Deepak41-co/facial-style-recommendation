@@ -308,9 +308,7 @@ class FaceShapeDetector:
         self.analysis_cache[image_hash] = result
         return result
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy", "message": "Face Shape API is running"})
+
 
 @app.route('/analyze-face', methods=['POST'])
 def analyze_face():
@@ -374,7 +372,7 @@ def serve_frontend():
 def favicon():
     return '', 204
 
-@app.route('/health')
+@app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy", "message": "Face Shape API is running"})
 if __name__ == '__main__':
