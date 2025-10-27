@@ -11,14 +11,6 @@ app = Flask(__name__)
 CORS(app)
 from flask import send_from_directory
 
-@app.route('/')
-def serve_frontend():
-    return send_from_directory('.', 'front.html')
-
-@app.route('/favicon.ico')
-def favicon():
-    return '', 204
-
 
 class FaceShapeDetector:
     def __init__(self):
@@ -374,10 +366,21 @@ def analyze_face():
             'success': False,
             'error': f'Internal server error: {str(e)}'
         }), 500
+@app.route('/')
+def serve_frontend():
+    return send_from_directory('.', 'front.html')
 
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy", "message": "Face Shape API is running"})
 if __name__ == '__main__':
     print("🚀 Starting Face Shape Analysis API...")
     print("📍 Backend URL: http://localhost:5000")
     print("📱 Open front.html in your browser to use the application")
     print("⚡ Features: 7 Face Shapes, Advanced Measurements, Personalized Recommendations")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
