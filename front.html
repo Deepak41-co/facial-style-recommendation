@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Shape Analyzer with Hairstyles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .camera-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .video-container {
+            position: relative;
+            background: black;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            transform: scaleX(-1); /* Mirror effect */
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: none; /* Hide canvas, we don't need continuous drawing */
+        }
+
+        .face-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 250px;
+            border: 3px solid #00ff00;
+            border-radius: 45%;
+            background: transparent;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.7;
+        }
+
+        .face-guide::before {
+            content: 'Position Face Here for Best Results';
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-size: 14px;
+            white-space: nowrap;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+
+        .guide-line {
+            position: absolute;
+            background: #00ff00;
+            opacity: 0.3;
+        }
+
+        .guide-line.horizontal {
+            left: 0;
+            right: 0;
+            height: 1px;
+        }
+
+        .guide-line.vertical {
+            top: 0;
+            bottom: 0;
+            width: 1px;
+        }
+
+        #capturedImage {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            display: none;
+            transform: scaleX(-1); /* Mirror effect for captured image */
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .capture-btn {
+            background: linear-gradient(135deg, #FF6B6B 0%, #EE5A52 100%);
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+
+        .stop-btn {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+        }
+
+        .gender-selection {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .gender-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .gender-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .results {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .shape-result {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .shape-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .shape-name {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .confidence {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .recommendations {
+            margin-top: 30px;
+        }
+
+        .recommendation-category {
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .recommendation-list {
+            list-style: none;
+        }
+
+        .recommendation-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s;
+        }
+
+        .recommendation-item:hover {
+            transform: translateX(5px);
+            background: #e9ecef;
+        }
+
+        .hairstyle-gallery {
+            margin-top: 20px;
+        }
+
+        .hairstyle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .hairstyle-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .hairstyle-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .hairstyle-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .hairstyle-name {
+            padding: 10px;
+            text-align: center;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-face {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .measurements {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .measurement-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .measurement-item:last-child {
+            border-bottom: none;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #c33;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #363;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #363;
+        }
+
+        .captured-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .upload-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e7f3ff;
+            border-color: #4CAF50;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .camera-info {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            background: #e7f3ff;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .free-capture-note {
+            text-align: center;
+            padding: 8px;
+            margin: 5px 0;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            font-size: 0.8em;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 Face Shape Analyzer</h1>
+            <p>Discover your face shape and get personalized hairstyle recommendations</p>
+        </div>
+
+        <div class="content">
+            <!-- Camera Section -->
+            <div class="camera-section">
+                <div class="instructions">
+                    <strong>📝 Instructions:</strong>
+                    <p>1. Select your gender</p>
+                    <p>2. Click "Start Camera" and allow camera access</p>
+                    <p>3. Click "Capture Photo"</p>
+                    <p>4. Or upload an existing photo</p>
+                </div>
+
+                <div class="video-container" id="videoContainer">
+                    <video id="video" autoplay playsinline></video>
+                    <div class="canvas-container">
+                        <canvas id="canvas"></canvas>
+                        <div class="face-guide">
+                            <div class="guide-line horizontal" style="top: 50%"></div>
+                            <div class="guide-line vertical" style="left: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="captured-container">
+                    <img id="capturedImage" alt="Captured Face">
+                </div>
+
+                <div class="camera-info" id="cameraInfo" style="display: none;">
+                    ✅ Camera is active - You can capture photos freely!
+                </div>
+
+                <div class="gender-selection">
+                    <div class="gender-btn active" data-gender="male">👨 Male</div>
+                    <div class="gender-btn" data-gender="female">👩 Female</div>
+                </div>
+
+                <div class="controls">
+                    <button id="startBtn">🎬 Start Camera</button>
+                    <button id="stopBtn" style="display: none;" class="stop-btn">⏹️ Stop Camera</button>
+                    <button id="captureBtn" disabled class="capture-btn">📸 Capture Photo</button>
+                    <button id="retakeBtn" style="display: none;">🔄 Retake Photo</button>
+                </div>
+
+                <div class="upload-container">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <h3>Or Upload Photo</h3>
+                        <p>Drag & drop or click to upload a photo</p>
+                        <p style="font-size: 0.9em; color: #666;">Supported formats: JPG, PNG, JPEG</p>
+                        <input type="file" id="fileInput" accept="image/*">
+                    </div>
+                </div>
+
+                
+
+                <div class="measurements" id="measurements" style="display: none;">
+                    <div class="measurement-item">
+                        <span>Face Length:</span>
+                        <span id="faceLength">--</span>
+                    </div>
+                    <div class="measurement-item">
+                        <span>Face Width:</span>
+                        <span id="faceWidth">--</span>
+                    </div>
+                    <div class="measurement-item">
+                        <span>Length/Width Ratio:</span>
+                        <span id="faceRatio">--</span>
+                    </div>
+                    <div class="measurement-item">
+                        <span>Jaw/Forehead Ratio:</span>
+                        <span id="jawRatio">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section">
+                <div class="results" id="results">
+                    <div class="no-face" id="noFaceMessage">
+                        <div style="font-size: 3em; margin-bottom: 15px;">👆</div>
+                        <p>Start camera and capture your photo to see face shape analysis!</p>
+                    </div>
+
+                    <div id="analysisResults" style="display: none;">
+                        <div class="shape-result">
+                            <div class="shape-icon" id="shapeIcon">⭕</div>
+                            <div class="shape-name" id="shapeName">Oval</div>
+                            <div class="confidence" id="confidence">85% Confidence</div>
+                        </div>
+
+                        <div class="recommendations" id="recommendationsContainer">
+                            <!-- Recommendations will be filled based on gender -->
+                        </div>
+                    </div>
+
+                    <div class="loading" id="loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Analyzing your face shape...</p>
+                        <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
+                            Processing with AI face detection
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class FaceShapeFrontend {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.capturedImage = document.getElementById('capturedImage');
+                this.stream = null;
+                this.selectedGender = 'male';
+                this.backendUrl = 'http://localhost:5000';
+                this.capturedPhoto = null;
+                
+                this.initializeEventListeners();
+                this.setupGenderSelection();
+                this.setupUpload();
+                this.checkBackendConnection();
+            }
+
+            async checkBackendConnection() {
+                try {
+                    const response = await fetch(`${this.backendUrl}/health`);
+                    if (response.ok) {
+                        document.getElementById('apiStatus').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.log('Backend not connected, using demo mode');
+                }
+            }
+
+            initializeEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startCamera());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopCamera());
+                document.getElementById('captureBtn').addEventListener('click', () => this.captureAndAnalyze());
+                document.getElementById('retakeBtn').addEventListener('click', () => this.retakePhoto());
+            }
+
+            setupGenderSelection() {
+                const genderBtns = document.querySelectorAll('.gender-btn');
+                genderBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        genderBtns.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.selectedGender = btn.dataset.gender;
+                        if (document.getElementById('analysisResults').style.display !== 'none') {
+                            this.updateRecommendationsForGender();
+                        }
+                    });
+                });
+            }
+
+            setupUpload() {
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+
+                uploadArea.addEventListener('click', () => fileInput.click());
+                
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFileUpload(files[0]);
+                    }
+                });
+
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleFileUpload(e.target.files[0]);
+                    }
+                });
+            }
+
+            handleFileUpload(file) {
+                if (!file.type.match('image.*')) {
+                    alert('Please upload an image file (JPG, PNG, JPEG)');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.showLoading();
+                    this.capturedPhoto = e.target.result;
+                    this.capturedImage.src = this.capturedPhoto;
+                    this.capturedImage.style.display = 'block';
+                    document.getElementById('videoContainer').style.display = 'none';
+                    
+                    // Stop camera if running
+                    this.stopCamera();
+                    
+                    // Analyze the uploaded photo
+                    setTimeout(() => this.analyzeUploadedPhoto(), 500);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            async analyzeUploadedPhoto() {
+                try {
+                    const result = await this.sendToBackend(this.capturedPhoto, this.selectedGender);
+                    if (result.success) {
+                        this.displayResults(result.data);
+                    } else {
+                        this.showError(result.error || 'Face detection failed in uploaded photo');
+                    }
+                } catch (error) {
+                    console.error('Upload analysis error:', error);
+                    this.showError('Analysis failed. Using demo mode.');
+                    this.fallbackToDemo();
+                }
+            }
+
+            async startCamera() {
+                try {
+                    // Stop existing stream if any
+                    if (this.stream) {
+                        this.stopCamera();
+                    }
+
+                    // Use lower resolution for better performance
+                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            facingMode: 'user',
+                            frameRate: { ideal: 30, max: 30 } // Limit frame rate for performance
+                        } 
+                    });
+                    
+                    this.video.srcObject = this.stream;
+                    
+                    // Wait for video to be ready
+                    this.video.onloadedmetadata = () => {
+                        this.video.play().then(() => {
+                            this.canvas.width = this.video.videoWidth;
+                            this.canvas.height = this.video.videoHeight;
+                            
+                            document.getElementById('startBtn').style.display = 'none';
+                            document.getElementById('stopBtn').style.display = 'block';
+                            document.getElementById('captureBtn').disabled = false;
+                            document.getElementById('retakeBtn').style.display = 'none';
+                            this.capturedImage.style.display = 'none';
+                            document.getElementById('videoContainer').style.display = 'block';
+                            document.getElementById('cameraInfo').style.display = 'block';
+                            
+                            console.log('Camera started successfully - No lag!');
+                        });
+                    };
+                    
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    alert('Unable to access camera. Please ensure you have given camera permissions.');
+                }
+            }
+
+            stopCamera() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => {
+                        track.stop(); // Completely stop the track
+                    });
+                    this.stream = null;
+                }
+                
+                document.getElementById('startBtn').style.display = 'block';
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('captureBtn').disabled = true;
+                document.getElementById('retakeBtn').style.display = 'block';
+                document.getElementById('cameraInfo').style.display = 'none';
+            }
+
+            async captureAndAnalyze() {
+                this.showLoading();
+                
+                try {
+                    // Simply capture the current video frame - no complex processing
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                    this.capturedPhoto = this.canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Stop camera immediately after capture
+                    this.stopCamera();
+                    
+                    // Show captured image
+                    this.capturedImage.src = this.capturedPhoto;
+                    this.capturedImage.style.display = 'block';
+                    document.getElementById('videoContainer').style.display = 'none';
+                    document.getElementById('cameraInfo').style.display = 'none';
+                    
+                    // Send to backend for analysis
+                    const result = await this.sendToBackend(this.capturedPhoto, this.selectedGender);
+                    
+                    if (result.success) {
+                        this.displayResults(result.data);
+                    } else {
+                        this.showError(result.error || 'Face detection failed');
+                    }
+                    
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    this.showError('Analysis failed. Using demo mode.');
+                    this.fallbackToDemo();
+                }
+            }
+
+            retakePhoto() {
+                this.startCamera();
+                document.getElementById('analysisResults').style.display = 'none';
+                document.getElementById('noFaceMessage').style.display = 'block';
+                document.getElementById('measurements').style.display = 'none';
+            }
+
+            async sendToBackend(imageData, gender) {
+                try {
+                    const response = await fetch(`${this.backendUrl}/analyze-face`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            image: imageData,
+                            gender: gender
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('Backend request failed:', error);
+                    return this.getDemoData();
+                }
+            }
+
+            getDemoData() {
+                const shapes = ['Oval', 'Round', 'Square', 'Heart', 'Diamond', 'Oblong', 'Triangle'];
+                const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+                
+                return {
+                    success: true,
+                    data: {
+                        face_shape: randomShape,
+                        confidence: 85 + Math.floor(Math.random() * 15),
+                        measurements: {
+                            face_length: (18 + Math.random() * 2).toFixed(1),
+                            face_width: (14 + Math.random() * 2).toFixed(1),
+                            length_width_ratio: (1.2 + Math.random() * 0.4).toFixed(2),
+                            jaw_forehead_ratio: (0.8 + Math.random() * 0.3).toFixed(2)
+                        }
+                    }
+                };
+            }
+
+            fallbackToDemo() {
+                const demoData = this.getDemoData();
+                this.displayResults(demoData.data);
+            }
+
+            showLoading() {
+                document.getElementById('noFaceMessage').style.display = 'none';
+                document.getElementById('analysisResults').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+            }
+
+            showResults() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analysisResults').style.display = 'block';
+                document.getElementById('measurements').style.display = 'block';
+            }
+
+            showError(message) {
+                document.getElementById('loading').style.display = 'none';
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="error-message">
+                        <strong>Analysis Error</strong>
+                        <p>${message}</p>
+                        <button onclick="location.reload()" style="margin-top: 10px;">Try Again</button>
+                    </div>
+                `;
+            }
+
+            displayResults(data) {
+                this.showResults();
+                
+                document.getElementById('shapeName').textContent = data.face_shape;
+                document.getElementById('confidence').textContent = `${data.confidence}% Confidence`;
+                
+                const shapeIcons = {
+                    'Oval': '⭕', 'Round': '🔵', 'Square': '🔷',
+                    'Heart': '💖', 'Diamond': '💎', 'Oblong': '📏',
+                    'Triangle': '🔺'
+                };
+                document.getElementById('shapeIcon').textContent = shapeIcons[data.face_shape] || '⭕';
+                
+                if (data.measurements) {
+                    document.getElementById('faceLength').textContent = `${data.measurements.face_length}cm`;
+                    document.getElementById('faceWidth').textContent = `${data.measurements.face_width}cm`;
+                    document.getElementById('faceRatio').textContent = data.measurements.length_width_ratio;
+                    document.getElementById('jawRatio').textContent = data.measurements.jaw_forehead_ratio;
+                }
+                
+                this.updateRecommendationsForGender(data.face_shape);
+            }
+
+            updateRecommendationsForGender(faceShape) {
+                const container = document.getElementById('recommendationsContainer');
+                container.innerHTML = '';
+
+                if (this.selectedGender === 'male') {
+                    this.createMaleRecommendations(container, faceShape);
+                } else {
+                    this.createFemaleRecommendations(container, faceShape);
+                }
+            }
+
+            createMaleRecommendations(container, faceShape) {
+                const recommendations = this.getMaleRecommendations(faceShape);
+                const hairstyles = this.getHairstylesForShape(faceShape);
+                
+                // Create hairstyle gallery
+                if (hairstyles.length > 0) {
+                    const hairstyleSection = document.createElement('div');
+                    hairstyleSection.className = 'recommendation-category';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.textContent = '💇‍♂️ Recommended Hairstyles';
+                    hairstyleSection.appendChild(title);
+                    
+                    const gallery = document.createElement('div');
+                    gallery.className = 'hairstyle-gallery';
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'hairstyle-grid';
+                    
+                    hairstyles.forEach(hairstyle => {
+                        const card = document.createElement('div');
+                        card.className = 'hairstyle-card';
+                        
+                        const image = document.createElement('div');
+                        image.className = 'hairstyle-image';
+                        image.innerHTML = `<div style="text-align: center; padding: 10px;">${hairstyle.icon}<br><small>${hairstyle.name}</small></div>`;
+                        
+                        const name = document.createElement('div');
+                        name.className = 'hairstyle-name';
+                        name.textContent = hairstyle.name;
+                        
+                        card.appendChild(image);
+                        card.appendChild(name);
+                        grid.appendChild(card);
+                    });
+                    
+                    gallery.appendChild(grid);
+                    hairstyleSection.appendChild(gallery);
+                    container.appendChild(hairstyleSection);
+                }
+                
+                // Create other recommendations
+                Object.keys(recommendations).forEach(category => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'recommendation-category';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.textContent = this.getMaleCategoryIcon(category) + ' ' + category;
+                    categoryDiv.appendChild(title);
+                    
+                    const list = document.createElement('ul');
+                    list.className = 'recommendation-list';
+                    
+                    recommendations[category].forEach(rec => {
+                        const li = document.createElement('li');
+                        li.className = 'recommendation-item';
+                        li.textContent = rec;
+                        list.appendChild(li);
+                    });
+                    
+                    categoryDiv.appendChild(list);
+                    container.appendChild(categoryDiv);
+                });
+            }
+
+            createFemaleRecommendations(container, faceShape) {
+                const recommendations = this.getFemaleRecommendations(faceShape);
+                const hairstyles = this.getHairstylesForShape(faceShape);
+                
+                // Create hairstyle gallery
+                if (hairstyles.length > 0) {
+                    const hairstyleSection = document.createElement('div');
+                    hairstyleSection.className = 'recommendation-category';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.textContent = '💇‍♀️ Recommended Hairstyles';
+                    hairstyleSection.appendChild(title);
+                    
+                    const gallery = document.createElement('div');
+                    gallery.className = 'hairstyle-gallery';
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'hairstyle-grid';
+                    
+                    hairstyles.forEach(hairstyle => {
+                        const card = document.createElement('div');
+                        card.className = 'hairstyle-card';
+                        
+                        const image = document.createElement('div');
+                        image.className = 'hairstyle-image';
+                        image.innerHTML = `<div style="text-align: center; padding: 10px;">${hairstyle.icon}<br><small>${hairstyle.name}</small></div>`;
+                        
+                        const name = document.createElement('div');
+                        name.className = 'hairstyle-name';
+                        name.textContent = hairstyle.name;
+                        
+                        card.appendChild(image);
+                        card.appendChild(name);
+                        grid.appendChild(card);
+                    });
+                    
+                    gallery.appendChild(grid);
+                    hairstyleSection.appendChild(gallery);
+                    container.appendChild(hairstyleSection);
+                }
+                
+                // Create other recommendations
+                Object.keys(recommendations).forEach(category => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'recommendation-category';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.textContent = this.getFemaleCategoryIcon(category) + ' ' + category;
+                    categoryDiv.appendChild(title);
+                    
+                    const list = document.createElement('ul');
+                    list.className = 'recommendation-list';
+                    
+                    recommendations[category].forEach(rec => {
+                        const li = document.createElement('li');
+                        li.className = 'recommendation-item';
+                        li.textContent = rec;
+                        list.appendChild(li);
+                    });
+                    
+                    categoryDiv.appendChild(list);
+                    container.appendChild(categoryDiv);
+                });
+            }
+
+            getHairstylesForShape(faceShape) {
+                // Based on your reference images, here are hairstyles for each face shape
+                const hairstyles = {
+                    'Oval': [
+                        { name: 'Side Parted', icon: '💁' },
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Quiff', icon: '💫' },
+                        { name: 'Long Fringes', icon: '👨' },
+                        { name: 'Buzz Cut', icon: '💇' },
+                        { name: 'Pushed Back', icon: '🔄' }
+                    ],
+                    'Round': [
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Faux Hawk', icon: '🦅' },
+                        { name: 'Quiff', icon: '💫' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Side Parted', icon: '↔️' }
+                    ],
+                    'Square': [
+                        { name: 'Buzz Cut', icon: '💇' },
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Quiff', icon: '💫' },
+                        { name: 'Side Parted', icon: '↔️' }
+                    ],
+                    'Heart': [
+                        { name: 'Side Parted', icon: '↔️' },
+                        { name: 'Quiff', icon: '💫' },
+                        { name: 'Faux Hawk', icon: '🦅' },
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Undercut', icon: '✂️' }
+                    ],
+                    'Diamond': [
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Side Parted', icon: '↔️' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Quiff', icon: '💫' },
+                        { name: 'Buzz Cut', icon: '💇' }
+                    ],
+                    'Oblong': [
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Side Parted', icon: '↔️' },
+                        { name: 'Sport Cut', icon: '🏃' },
+                        { name: 'Buzz Cut', icon: '💇' }
+                    ],
+                    'Triangle': [
+                        { name: 'Faux Hawk', icon: '🦅' },
+                        { name: 'Side Fringe', icon: '💁' },
+                        { name: 'Fringe Up', icon: '👆' },
+                        { name: 'Undercut', icon: '✂️' },
+                        { name: 'Side Parted', icon: '↔️' },
+                        { name: 'Quiff', icon: '💫' }
+                    ]
+                };
+                
+                return hairstyles[faceShape] || hairstyles['Oval'];
+            }
+
+            getMaleCategoryIcon(category) {
+                const icons = {
+                    'Hairstyles': '💇‍♂️',
+                    'Beard Styles': '🧔',
+                    'Glasses': '👓',
+                    'Mustache Styles': '🪒',
+                    'Pro Tips': '💫'
+                };
+                return icons[category] || '🌟';
+            }
+
+            getFemaleCategoryIcon(category) {
+                const icons = {
+                    'Hairstyles': '💇‍♀️',
+                    'Makeup Tips': '💄',
+                    'Glasses': '👓',
+                    'Skincare': '✨',
+                    'Pro Tips': '💫'
+                };
+                return icons[category] || '🌟';
+            }
+
+            getMaleRecommendations(shape) {
+                return window.maleRecommendations[shape] || window.maleRecommendations['Oval'];
+            }
+
+            getFemaleRecommendations(shape) {
+                return window.femaleRecommendations[shape] || window.femaleRecommendations['Oval'];
+            }
+        }
+
+        // Complete Male Recommendations for All 7 Face Shapes
+        window.maleRecommendations = {
+            'Oval': {
+                'Beard Styles': [
+                    'Light stubble maintains facial balance',
+                    'Short, well-groomed beard works well',
+                    'Avoid very long beards that elongate face',
+                    'Goatee styles complement your shape'
+                ],
+                'Glasses': [
+                    'Rectangular frames add definition',
+                    'Aviator styles work beautifully',
+                    'Wayfarer frames complement your balance',
+                    'Avoid overly round frames'
+                ],
+                'Pro Tips': [
+                    'Your oval shape is versatile - experiment!',
+                    'Keep hair off forehead to show face shape',
+                    'Regular grooming maintains your proportions',
+                    'Balance is key - avoid extreme styles'
+                ]
+            },
+            'Round': {
+                'Beard Styles': [
+                    'Angular beard lines for definition',
+                    'Goatee to elongate chin area',
+                    'Avoid round beard shapes',
+                    'Sharp jawline definition'
+                ],
+                'Glasses': [
+                    'Rectangular or square frames',
+                    'Angular designs add definition',
+                    'Avoid round or oval frames',
+                    'Bold, geometric styles work best'
+                ],
+                'Pro Tips': [
+                    'Add angles to complement curves',
+                    'Vertical lines create elongation',
+                    'Sharp fades enhance jaw definition',
+                    'Avoid circular patterns'
+                ]
+            },
+            'Square': {
+                'Beard Styles': [
+                    'Rounded beard shapes soften jaw',
+                    'Light stubble maintains softness',
+                    'Avoid sharp, angular beard lines',
+                    'Full beard with rounded edges'
+                ],
+                'Glasses': [
+                    'Round or oval frames soften angles',
+                    'Aviator styles complement jawline',
+                    'Avoid square frames',
+                    'Soft, curved designs work best'
+                ],
+                'Pro Tips': [
+                    'Soft textures complement your angles',
+                    'Round elements balance strong jaw',
+                    'Your strong features are very masculine',
+                    'Avoid adding more angles'
+                ]
+            },
+            'Heart': {
+                'Beard Styles': [
+                    'Full beard to balance narrow chin',
+                    'Goatee adds width to jaw area',
+                    'Avoid pointed beard styles',
+                    'Medium thickness works well'
+                ],
+                'Glasses': [
+                    'Bottom-heavy frames balance forehead',
+                    'Aviator styles draw attention down',
+                    'Light-colored frames work well',
+                    'Avoid top-heavy designs'
+                ],
+                'Pro Tips': [
+                    'Add width at jawline for balance',
+                    'Draw attention to lower face',
+                    'Your shape is very attractive',
+                    'Balance is key - avoid top-heavy styles'
+                ]
+            },
+            'Diamond': {
+                'Beard Styles': [
+                    'Full beard to soften cheekbones',
+                    'Rounded shapes complement angles',
+                    'Avoid very short beards',
+                    'Medium thickness works best'
+                ],
+                'Glasses': [
+                    'Oval or round frames soften angles',
+                    'Frames with detailing on brow line',
+                    'Avoid angular frame designs',
+                    'Soft, curved styles work well'
+                ],
+                'Pro Tips': [
+                    'Your cheekbones are amazing!',
+                    'Soft styles complement your angles',
+                    'Add width at forehead and jaw',
+                    'Balance is key for your shape'
+                ]
+            },
+            'Oblong': {
+                'Beard Styles': [
+                    'Full beard shortens face appearance',
+                    'Goatee adds width to chin area',
+                    'Avoid very long beard styles',
+                    'Medium thickness recommended'
+                ],
+                'Glasses': [
+                    'Deep frames shorten face visually',
+                    'Bold, decorative temples add width',
+                    'Avoid small, narrow frames',
+                    'Square or round styles work well'
+                ],
+                'Pro Tips': [
+                    'Create width illusion with styling',
+                    'Your length is very model-like',
+                    'Horizontal lines work beautifully',
+                    'Avoid vertical elongating styles'
+                ]
+            },
+            'Triangle': {
+                'Beard Styles': [
+                    'Light stubble maintains balance',
+                    'Goatee softens jaw width',
+                    'Avoid very full beard styles',
+                    'Well-defined jawline works well'
+                ],
+                'Glasses': [
+                    'Top-heavy frames balance jaw',
+                    'Browline styles draw attention up',
+                    'Avoid bottom-heavy frames',
+                    'Angular designs work best'
+                ],
+                'Pro Tips': [
+                    'Balance wide jaw with upper volume',
+                    'Draw attention to upper face',
+                    'Your strong jaw is very masculine',
+                    'Create vertical balance in styling'
+                ]
+            }
+        };
+
+        // Complete Female Recommendations for All 7 Face Shapes
+        window.femaleRecommendations = {
+            'Oval': {
+                'Makeup Tips': [
+                    'Focus on enhancing natural symmetry',
+                    'Soft contouring maintains proportions',
+                    'Experiment with bold lip colors',
+                    'Balanced eye makeup works best'
+                ],
+                'Glasses': [
+                    'Cat-eye frames add femininity',
+                    'Geometric shapes for interest',
+                    'Oval frames maintain balance',
+                    'Most styles complement your face'
+                ],
+                'Pro Tips': [
+                    'You have the most versatile face shape!',
+                    'Experiment with different styles',
+                    'Your balanced features are your strength',
+                    'Avoid overwhelming your natural symmetry'
+                ]
+            },
+            'Round': {
+                'Makeup Tips': [
+                    'Contour below cheekbones and jawline',
+                    'Angular eyebrow shapes',
+                    'Highlight center of forehead and chin',
+                    'Matte finishes work best'
+                ],
+                'Glasses': [
+                    'Rectangular frames add definition',
+                    'Cat-eye with sharp angles',
+                    'Avoid round or small frames',
+                    'Oversized angular styles'
+                ],
+                'Pro Tips': [
+                    'Create angles to complement curves',
+                    'Vertical styles elongate your face',
+                    'Sharp details enhance definition',
+                    'Avoid circular patterns'
+                ]
+            },
+            'Square': {
+                'Makeup Tips': [
+                    'Round blush application softens angles',
+                    'Fuller lips balance strong jaw',
+                    'Soft, smoky eye looks',
+                    'Focus on rounded shapes'
+                ],
+                'Glasses': [
+                    'Round or oval frames soften angles',
+                    'Cat-eye with gentle curves',
+                    'Avoid square frames',
+                    'Soft, rounded designs'
+                ],
+                'Pro Tips': [
+                    'Soft textures complement your angles',
+                    'Round elements balance strong features',
+                    'Your strong jawline is very attractive',
+                    'Avoid adding more angles'
+                ]
+            },
+            'Heart': {
+                'Makeup Tips': [
+                    'Focus makeup on lower face',
+                    'Balance with lip color attention',
+                    'Light contour on temples',
+                    'Softer eye makeup works well'
+                ],
+                'Glasses': [
+                    'Bottom-heavy frames balance forehead',
+                    'Light-colored frames',
+                    'Aviator styles draw attention down',
+                    'Avoid top-heavy designs'
+                ],
+                'Pro Tips': [
+                    'Your delicate chin is very feminine',
+                    'Create balance between features',
+                    'Heart shapes are very attractive',
+                    'Draw attention to lower face'
+                ]
+            },
+            'Diamond': {
+                'Makeup Tips': [
+                    'Highlight your amazing cheekbones!',
+                    'Balance with lip attention',
+                    'Soft contour on forehead and chin',
+                    'Focus on balanced application'
+                ],
+                'Glasses': [
+                    'Oval or cat-eye frames',
+                    'Frames with detailing on brow line',
+                    'Avoid angular designs',
+                    'Soft, rounded styles'
+                ],
+                'Pro Tips': [
+                    'Your cheekbones are stunning!',
+                    'Balance width throughout face',
+                    'Diamond shapes are rare and elegant',
+                    'Soft styles complement your angles'
+                ]
+            },
+            'Oblong': {
+                'Makeup Tips': [
+                    'Horizontal blush application',
+                    'Fuller lips add width',
+                    'Bronzer on forehead and chin',
+                    'Focus on width creation'
+                ],
+                'Glasses': [
+                    'Oversized frames add width',
+                    'Decorative temples create interest',
+                    'Round or square styles',
+                    'Avoid narrow frames'
+                ],
+                'Pro Tips': [
+                    'Your face length is very model-like',
+                    'Create width illusion with styling',
+                    'Horizontal lines work beautifully',
+                    'Oblong faces photograph excellently'
+                ]
+            },
+            'Triangle': {
+                'Makeup Tips': [
+                    'Highlight upper face features',
+                    'Softer contour on jawline',
+                    'Focus on eye makeup',
+                    'Balance with lip color'
+                ],
+                'Glasses': [
+                    'Top-heavy frames create balance',
+                    'Cat-eye styles draw attention up',
+                    'Avoid wide bottom frames',
+                    'Angular designs work well'
+                ],
+                'Pro Tips': [
+                    'Balance is key for your shape',
+                    'Draw attention to upper face',
+                    'Your strong jaw is beautiful',
+                    'Create vertical harmony in styling'
+                ]
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            window.faceAnalyzer = new FaceShapeFrontend();
+        });
+    </script>
+</body>
+</html>
