@@ -9,6 +9,16 @@ import hashlib
 
 app = Flask(__name__)
 CORS(app)
+from flask import send_from_directory
+
+@app.route('/')
+def serve_frontend():
+    return send_from_directory('.', 'front.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 
 class FaceShapeDetector:
     def __init__(self):
