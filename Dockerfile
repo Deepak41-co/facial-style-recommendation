@@ -27,4 +27,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the Flask app
-CMD ["python", "main.py"]
+CMD ["python", "augmented.py"]
